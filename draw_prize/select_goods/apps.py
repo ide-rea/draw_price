@@ -3,6 +3,5 @@ from __future__ import unicode_literals
 
 from django.apps import AppConfig
 
-s SelectGoodsConfig
-clas(AppConfig):
+class SelectGoodsConfig(AppConfig):
     name = 'select_goods'
