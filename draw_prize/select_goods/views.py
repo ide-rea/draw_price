@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
+from django.http import HttpResponseRedirect
 from __future__ import unicode_literals
 from django.http import JsonResponse
 from django.shortcuts import render
-from redis import StrictRedis
 from .forms import user_information
+from redis import StrictRedis
 from  .models import *
+import smtplib
 import random
 # Create your views here.
 #确定用户是否已经参加过活动
+def send_mail(to_addr,content):
+    from_addr=''
+    smtp=smtplib.SMTP('host','port')
+    smtp.login(from_addr,'passwd')
+    smtp.sendmail(from_addr,to_addr,content)
 def yes_or_not_draw_prize(request):
     '''
     用redis缓存一个已参加该活动的用户的hash表
@@ -16,13 +23,13 @@ def yes_or_not_draw_prize(request):
     ；否则返回库里面尚未抽取的商品.
     '''
     #默认的连接方式
-    redis_connect=StrictRedis()
+    r=StrictRedis()
     person="get from request"
-    if redis_connect.hget('has_join_activity_people',person):
+    if r.hget('has_join_activity_people',person):
         flag=True
     else:
         flag=False
-    redis_connect.client_kill()
+    r.client_kill()
     return JsonResponse({'has_draw_prize':False})
 
 def get_draw_prize_res(request):
@@ -37,21 +44,14 @@ def get_draw_prize_res(request):
     并在数据库里面记录下商品的减少
     给用户发送邮件
     '''
-    redis_connect = StrictRedis()
-    count = redis_connect.hlen('has_join_activity_people')
-    if count%21:
-        all_real_goods=redis_connect.hkeys('real_goods')
-        length=len(all_real_goods)
-        goods=all_real_goods[random.randint(0,length-1)]
-        redis_connect.hincrby('realgoods',goods,-1)
-        redis_connect.lpush('locked_goods',{type:'real_goods'})
-        return JsonResponse({'goods':goods})
-    else:
-        length=redis_connect.llen('virtual_goods')
-        goods=redis_connect.lpop('virtual_goods')
-        redis_connect.lpush('locked_goods',{'type':'virtual_goods','msg':'goods'})
-        return JsonResponse({'goods':goods.split(',')[0])
-    query_left_goods='from redis'
+    user='get'
+    r=StrictRedis()
+    goods=r.lpop('all_goods')
+    r.hset('locked',user,goods)
+    goods=goods.split(',')
+    if len(goods)>1:
+        goods=goods[0]
+    return JsonResponse({'goods':goods})
 
 def real_or_virtual_good(request):
     '''
@@ -59,9 +59,8 @@ def real_or_virtual_good(request):
     否则返回虚拟商品抽奖成功的提示信息
     '''
     if request['type']=='virtual_goods':
-        form=request.
+        return JsonResponse({'goods':request['name'],'path':'to the picture'})
 
-    pass
 def take_virtual_good(request):
     '''
     1.锁定商品的逻辑后台负责控制
@@ -70,13 +69,11 @@ def take_virtual_good(request):
     并发送邮件通知商品已经发放
     并返回一个页面提示操作成功
    '''
-    if request.method=='POST':
-        form=user_information(request.POST)
-        if form.is_valid:
 
-
-
-    pass
+    r=StrictRedis()
+    user=request['user']
+    good_msg=r.hget(user)
+    send_mail(user,good_msg)
 def take_real_good(request):
     '''
     这一步需要验证用户填写的正确性
@@ -85,3 +82,14 @@ def take_real_good(request):
     并返回一个页面提示操作成功
     否则返回表单，重新填写
     '''
+    if request.method=='POST':
+        form=user_information(request.POST)
+        if form.is_valid():
+            data=form.cleaned_data
+            user_msg.objects.create(receiver=data['receiver'],\
+                                    tell=data['tell'],address=data['address'])
+            return JsonResponse({'pass':True})
+        else:
+            return JsonResponse(form.errors)
+    else:
+        return JsonResponse({['receiver','tell','adress']})
