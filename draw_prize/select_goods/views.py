@@ -7,6 +7,7 @@ from .forms import user_information
 from redis import StrictRedis
 from  .models import *
 import smtplib
+import time
 import random
 # Create your views here.
 #确定用户是否已经参加过活动
@@ -25,13 +26,14 @@ def yes_or_not_draw_prize(request):
     #默认的连接方式
     r=StrictRedis()
     person="get from request"
-    if r.hget('has_join_activity_people',person):
+    if r.hget('has_join_activity_people',person) or r.hlen('all_goods')==0:
         flag=True
+        end=True
     else:
         flag=False
+        end=False
     r.client_kill()
-    return JsonResponse({'has_draw_prize':False})
-
+    return JsonResponse({'has_draw_prize':flag,'end':end})
 def get_draw_prize_res(request):
 
 
@@ -44,10 +46,14 @@ def get_draw_prize_res(request):
     并在数据库里面记录下商品的减少
     给用户发送邮件
     '''
+
     user='get'
     r=StrictRedis()
+    for k,v in r.hgetall().items():
+        if (time.time-float(k.split(':')[1]))>3600:
+            r.lpush('all_goods',v)
     goods=r.lpop('all_goods')
-    r.hset('locked',user,goods)
+    r.hset('locked',user+':'+str(time.time()),goods)
     goods=goods.split(',')
     if len(goods)>1:
         goods=goods[0]
@@ -58,8 +64,7 @@ def real_or_virtual_good(request):
     检查是否是真实的商品，如果是则返回表单
     否则返回虚拟商品抽奖成功的提示信息
     '''
-    if request['type']=='virtual_goods':
-        return JsonResponse({'goods':request['name'],'path':'to the picture'})
+    return JsonResponse({'goods':request['name'],'path':'to the picture'})
 
 def take_virtual_good(request):
     '''
@@ -69,11 +74,13 @@ def take_virtual_good(request):
     并发送邮件通知商品已经发放
     并返回一个页面提示操作成功
    '''
-
     r=StrictRedis()
-    user=request['user']
+    user_=request['user']
     good_msg=r.hget(user)
     send_mail(user,good_msg)
+    r.hdel('locked',user)
+    user_draw_prize.objects.create(user=user_,goods=good_msg)
+    return JsonResponse({'release':True})
 def take_real_good(request):
     '''
     这一步需要验证用户填写的正确性
@@ -93,3 +100,4 @@ def take_real_good(request):
             return JsonResponse(form.errors)
     else:
         return JsonResponse({['receiver','tell','adress']})
+
