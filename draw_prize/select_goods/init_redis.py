@@ -1,27 +1,35 @@
 import redis
-import pymysql
-login={'host':'',
-       'port':'',
-       'database':'',
-       'user':'',
-       'passwd':''
+import sqlite3
+from .models import *
+#conn = pymysql.connect(**login)
+#curr = conn.cursor()
 
-}
-def load_to_redis()
-    r=redis.StrictRedis(host='',port='')
-    conn=pymysql.connect(**login)
-    curr=conn.cursor()
-    curr.execute('select * from  all_goods')
-    data=curr.fetchall()
-    for row in data:
-        if row[1]=='goods':
-            for i in range(numbers):
-                r.lpush('all_goods',row[1])
+def load_to_redis():
+    r=redis.StrictRedis()
+    for goods in all_goods.objects.all():
+        if goods.type=='goods':
+            for i in range(goods.count):
+                genre=goods.type
+                name=goods.name
+                try:
+                    path=goods.path.path
+                except Exception:
+                    path='None'
+
+                r.lpush('all_goods',genre+'|'+name+'|'+path)
         else:
-            goods_msg='|'.join([ele for ele in row  if ele])
-            r.lpush('all_goods',goods_msg)
+            genre=goods.type
+            name=goods.name
+            ticket=goods.ticket
+            code=goods.code  if goods.code else 'None'
+            try:
+                path=goods.path.path
+            except Exception:
+                path='None'
+            r.lpush('all_goods',genre+'|'+name+'|'+ticket+'|'+code+'|'+path)
     r.client_kill()
-
+if __name__=='__main__':
+    load_to_redis()
 
 
 

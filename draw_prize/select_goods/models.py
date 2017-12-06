@@ -24,6 +24,8 @@ class all_goods(models.Model):
     path=models.FileField(null=True,blank=True,upload_to='uploads/',verbose_name='商品图片')
     def __str__(self):
         return "%s-%s-%s"%(self.type,self.name,self.ticket)
+    #def elements(self):
+    #   return [self.type,self.name,self.ticket,self.code,self.count,self.path]
     class Meta:
         verbose_name_plural='商品信息'
 

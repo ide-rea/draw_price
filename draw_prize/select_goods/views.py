@@ -16,7 +16,7 @@ def send_mail(to_addr='1946628674@qq.com',content='hello'):
     smtp=smtplib.SMTP(host='mail.sohu.com',port=25)
     smtp.login(from_addr,'Wyqmg1104')
     smtp.sendmail(from_addr,to_addr,content)
-def yes_or_not_draw_prize(request):
+def yes_or_not_draw_prize(request,person):
     '''
     用redis缓存一个已参加该活动的用户的hash表
     前端发来包含有用户名的请求
@@ -25,16 +25,16 @@ def yes_or_not_draw_prize(request):
     '''
     #默认的连接方式
     r=StrictRedis()
-    person="get from request"
-    if r.hget('has_join_activity_people',person) or r.hlen('all_goods')==0:
+    end=False
+    if r.hget('has_join_activity_people',person):
         flag=True
-        end=True
     else:
         flag=False
-        end=False
+    if r.hlen('all_goods') == 0:
+        end=True
     r.client_kill()
     return JsonResponse({'has_draw_prize':flag,'end':end})
-def get_draw_prize_res(request):
+def get_draw_prize_res(request,person):
 
 
     '''
@@ -46,27 +46,24 @@ def get_draw_prize_res(request):
     并在数据库里面记录下商品的减少
     给用户发送邮件
     '''
-
-    user='get'
     r=StrictRedis()
     for k,v in r.hgetall().items():
-        if (time.time-float(k.split(':')[1]))>3600:
-            r.lpush('all_goods',v)
+        if (time.time()-int(k.split('\t')[1]))>3600:
+            r.lpush('all_goods_',v)
     goods=r.lpop('all_goods')
-    r.hset('locked',user+':'+str(time.time()),goods)
-    goods=goods.split(',')
-    if len(goods)>1:
-        goods=goods[0]
+    r.hset('locked',person+'\t'+str(int(time.time())),goods)
+    goods=goods.split(b'|')[1].decode()
     return JsonResponse({'goods':goods})
-
-def real_or_virtual_good(request):
+#可实现也可以不实现
+def real_or_virtual_good(request,name):
     '''
     检查是否是真实的商品，如果是则返回表单
     否则返回虚拟商品抽奖成功的提示信息
     '''
-    return JsonResponse({'goods':request['name'],'path':'to the picture'})
+    return JsonResponse({'goods':goods,'path':r.hget})
 
-def take_virtual_good(request):
+
+def take_virtual_good(request,person):
     '''
     1.锁定商品的逻辑后台负责控制
     2.30分钟释放商品的逻辑后台负责控制，端内负责30分钟的计时
@@ -75,13 +72,15 @@ def take_virtual_good(request):
     并返回一个页面提示操作成功
    '''
     r=StrictRedis()
-    user_=request['user']
-    good_msg=r.hget(user)
-    send_mail(user,good_msg)
-    r.hdel('locked',user)
-    user_draw_prize.objects.create(user=user_,goods=good_msg)
-    return JsonResponse({'release':True})
-def take_real_good(request):
+    good_msg=r.hget('locked',person)
+    if not good_msg:
+        return JsonResponse({'time_out':True,'release':False})
+    send_mail(person,good_msg)
+    r.hdel('locked',person)
+    r.hset('has_join_activity_people', person,True)
+    user_draw_prize.objects.create(user=person,goods=good_msg)
+    return JsonResponse({'release':True,'time_out':False})
+def take_real_good(request,person):
     '''
     这一步需要验证用户填写的正确性
     如果正确，则把用户信息存储下来
@@ -89,15 +88,20 @@ def take_real_good(request):
     并返回一个页面提示操作成功
     否则返回表单，重新填写
     '''
+    r=StrictRedis()
     if request.method=='POST':
         form=user_information(request.POST)
         if form.is_valid():
+            good_msg = r.hget('locked', person)
             data=form.cleaned_data
             user_msg.objects.create(receiver=data['receiver'],\
                                     tell=data['tell'],address=data['address'])
+            r.hdel('locked', person)
+            r.hset('has_join_activity_people', person, True)
+            user_draw_prize.objects.create(user=person, goods=good_msg)
             return JsonResponse({'pass':True})
         else:
-            return JsonResponse(form.errors)
+            return JsonResponse({['receiver','tell','adress','repeat']})
     else:
         return JsonResponse({['receiver','tell','adress']})
 
