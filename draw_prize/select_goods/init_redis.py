@@ -16,7 +16,7 @@ def load_to_redis():
                 except Exception:
                     path='None'
 
-                r.lpush('all_goods',genre+'|'+name+'|'+path)
+                r.lpush('all_goods_',genre+'|'+name+'|'+path)
         else:
             genre=goods.type
             name=goods.name
@@ -26,7 +26,7 @@ def load_to_redis():
                 path=goods.path.path
             except Exception:
                 path='None'
-            r.lpush('all_goods',genre+'|'+name+'|'+ticket+'|'+code+'|'+path)
+            r.lpush('all_goods_',genre+'|'+name+'|'+ticket+'|'+code+'|'+path)
     r.client_kill()
 if __name__=='__main__':
     load_to_redis()
