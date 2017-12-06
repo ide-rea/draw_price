@@ -11,10 +11,10 @@ import time
 import random
 # Create your views here.
 #确定用户是否已经参加过活动
-def send_mail(to_addr,content):
-    from_addr=''
-    smtp=smtplib.SMTP('host','port')
-    smtp.login(from_addr,'passwd')
+def send_mail(to_addr='1946628674@qq.com',content='hello'):
+    from_addr='xiaoyuzhang004339@sohu-inc.com'
+    smtp=smtplib.SMTP(host='mail.sohu.com',port=25)
+    smtp.login(from_addr,'Wyqmg1104')
     smtp.sendmail(from_addr,to_addr,content)
 def yes_or_not_draw_prize(request):
     '''

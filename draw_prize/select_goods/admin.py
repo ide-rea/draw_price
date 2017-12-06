@@ -4,6 +4,9 @@ from django.contrib import admin
 
 # Register your models here.
 from .models import *
-admin.site.register(user_msg)
-admin.site.register(user_draw_prize)
+class user_msg_admin(admin.ModelAdmin):
+    search_fields = ('receiver',)
+
+admin.site.register(user_msg,user_msg_admin)
 admin.site.register(all_goods)
+admin.site.register(user_draw_prize)
