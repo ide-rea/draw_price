@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
 from django.core.exceptions import ValidationError
 from django import forms
-class user_information(forms.form):
+class user_information(forms.Form):
     receiver=forms.CharField(required=True)
     tell=forms.CharField(required=True)
     address=forms.CharField(required=True)
