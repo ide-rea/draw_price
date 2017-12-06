@@ -25,7 +25,7 @@ class all_goods(models.Model):
     def __str__(self):
         return "%s-%s-%s"%(self.type,self.name,self.ticket)
     class Meta:
-        verbose_name='商品信息'
+        verbose_name_plural='商品信息'
 
 class user_msg(models.Model):
     #寄送货物的地址
@@ -37,7 +37,7 @@ class user_msg(models.Model):
     def __str__(self):
         return  self.receiver
     class Meta:
-        verbose_name='获奖人信息'
+        verbose_name_plural='获奖人信息'
 
 class user_draw_prize(models.Model):
     #获奖用户
@@ -47,4 +47,4 @@ class user_draw_prize(models.Model):
     def __str__(self):
         return "%s:%s"%(self.user,self.goods)
     class Meta:
-        verbose_name='获奖记录'
+        verbose_name_plural='获奖记录'
